@@ -5,10 +5,18 @@ import dotenv from "dotenv";
 import express, { Request, Response } from "express";
 import { FileRecord } from "./models/FileRecord";
 import { UserInfo } from "./models/UserInfo";
+import cors from "cors";
 
 dotenv.config();
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
+
+const corsOptions = {
+  origin: "*",
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+app.use(cors(corsOptions));
 
 app.use(bodyParser.json());
 
