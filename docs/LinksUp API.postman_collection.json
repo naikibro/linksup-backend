@@ -1,0 +1,155 @@
+{
+	"info": {
+		"_postman_id": "b1b988ba-735b-4981-b63b-590d1aafcebe",
+		"name": "LinksUp API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "36502015"
+	},
+	"item": [
+		{
+			"name": "files",
+			"item": [
+				{
+					"name": "Upload a file",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Cache-Control",
+								"value": "no-cache",
+								"name": "cache-control",
+								"type": "text"
+							},
+							{
+								"key": "Postman-Token",
+								"value": "<calculated when request is sent>",
+								"name": "postman-token",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "text/plain",
+								"name": "content-type",
+								"type": "text"
+							},
+							{
+								"key": "Content-Length",
+								"value": "<calculated when request is sent>",
+								"name": "content-length",
+								"type": "text"
+							},
+							{
+								"key": "Host",
+								"value": "<calculated when request is sent>",
+								"name": "host",
+								"type": "text"
+							},
+							{
+								"key": "User-Agent",
+								"value": "PostmanRuntime/7.39.1",
+								"name": "user-agent",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "*/*",
+								"name": "accept",
+								"type": "text"
+							},
+							{
+								"key": "Accept-Encoding",
+								"value": "gzip, deflate, br",
+								"name": "accept-encoding",
+								"type": "text"
+							},
+							{
+								"key": "Connection",
+								"value": "keep-alive",
+								"name": "connection",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fileName\": \"1.txt\",\n  \"fileType\": \"text/plain\",\n  \"fileBuffer\": \"base64-encoded-file-content\",\n  \"userInfo\": {\n    \"userId\": \"12345\",\n    \"userDetails\": \"John Doe\",\n    \"identityProvider\": \"Azure\",\n    \"userRoles\": [\"admin\"]\n  }\n}\n",
+							"options": {
+								"raw": {
+									"language": "text"
+								}
+							}
+						},
+						"url": {
+							"raw": "localhost:3000/files",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"files"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get self files",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "  {\n    \"id\": \"2024-12-03T10-00-00_example.txt\",\n    \"fileName\": \"example.txt\",\n    \"url\": \"https://yourstorageaccount.blob.core.windows.net/files/2024-12-03T10-00-00_example.txt\",\n    \"uploadedAt\": \"2024-12-03T10:00:00.000Z\",\n    \"size\": 1024,\n    \"type\": \"text/plain\",\n    \"author\": \"John Doe\",\n    \"authorId\": \"12345\"\n  }",
+							"options": {
+								"raw": {
+									"language": "text"
+								}
+							}
+						},
+						"url": {
+							"raw": "localhost:3000/files/:userId",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"files",
+								":userId"
+							],
+							"variable": [
+								{
+									"key": "userId",
+									"value": "12345",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Health check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:3000",
+					"host": [
+						"localhost"
+					],
+					"port": "3000"
+				}
+			},
+			"response": []
+		}
+	]
+}
