@@ -6,7 +6,9 @@ import express, { Request, Response } from "express";
 import { FileRecord } from "./models/FileRecord";
 import { UserInfo } from "./models/UserInfo";
 import cors from "cors";
+import multer from "multer";
 
+const upload = multer({ storage: multer.memoryStorage() });
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
@@ -43,65 +45,71 @@ const databaseId = "linksupdb-sql";
 const containerId = "uploads";
 
 // Upload a file and create a record in Cosmos DB
-app.post("/files", async (req: Request, res: Response) => {
-  const {
-    fileName,
-    fileType,
-    fileBuffer,
-    userInfo,
-  }: {
-    fileName: string;
-    fileType: string;
-    fileBuffer: Buffer;
-    userInfo: UserInfo;
-  } = req.body;
+app.post(
+  "/files",
+  upload.single("file"),
+  async (
+    req: Request,
+    res: Response,
+    next: express.NextFunction
+  ): Promise<void> => {
+    try {
+      const file = req.file;
+      const userInfo: UserInfo = JSON.parse(req.body.userInfo);
 
-  try {
-    const containerName = "files";
-    const containerClient = blobServiceClient.getContainerClient(containerName);
+      if (!file || !userInfo) {
+        res.status(400).json({ message: "File or user information missing" });
+        return;
+      }
 
-    // Ensure container exists
-    await containerClient.createIfNotExists();
+      const {
+        originalname: fileName,
+        mimetype: fileType,
+        buffer: fileBuffer,
+      } = file;
 
-    // Upload the file to Azure Storage
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const uploadedFileName = `${timestamp}_${fileName}`;
-    const blobClient = containerClient.getBlockBlobClient(uploadedFileName);
-    await blobClient.upload(fileBuffer, fileBuffer.length, {
-      blobHTTPHeaders: { blobContentType: fileType },
-    });
+      const containerName = "files";
+      const containerClient =
+        blobServiceClient.getContainerClient(containerName);
 
-    const blobUrl = blobClient.url;
+      await containerClient.createIfNotExists();
 
-    // Write file record to Cosmos DB
-    const { database } = await cosmosClient.databases.createIfNotExists({
-      id: databaseId,
-    });
-    const { container } = await database.containers.createIfNotExists({
-      id: containerId,
-    });
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const uploadedFileName = `${timestamp}_${fileName}`;
+      const blobClient = containerClient.getBlockBlobClient(uploadedFileName);
+      await blobClient.upload(fileBuffer, fileBuffer.length, {
+        blobHTTPHeaders: { blobContentType: fileType },
+      });
 
-    const record: FileRecord = {
-      id: uploadedFileName,
-      fileName,
-      url: blobUrl,
-      uploadedAt: new Date().toISOString(),
-      size: fileBuffer.length,
-      type: fileType,
-      author: userInfo.userDetails,
-      authorId: userInfo.userId,
-    };
+      const blobUrl = blobClient.url;
 
-    await container.items.create(record);
+      const { database } = await cosmosClient.databases.createIfNotExists({
+        id: databaseId,
+      });
+      const { container } = await database.containers.createIfNotExists({
+        id: containerId,
+      });
 
-    res.status(201).json(record);
-  } catch (error) {
-    console.error("Error uploading file or writing record:", error);
-    res
-      .status(500)
-      .json({ message: "Error uploading file or writing record", error });
+      const record: FileRecord = {
+        id: uploadedFileName,
+        fileName,
+        url: blobUrl,
+        uploadedAt: new Date().toISOString(),
+        size: fileBuffer.length,
+        type: fileType,
+        author: userInfo.userDetails,
+        authorId: userInfo.userId,
+      };
+
+      await container.items.create(record);
+
+      res.status(201).json(record);
+    } catch (error) {
+      console.error("Error uploading file or writing record:", error);
+      next(error);
+    }
   }
-});
+);
 
 // Fetch all files for a specific user
 app.get("/files/:userId", async (req: Request, res: Response) => {

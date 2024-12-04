@@ -19,7 +19,10 @@ This project is a Node.js-based RESTful API for uploading files to Azure Blob St
 
 You can use Postman to the import the API documentation from the `/docs` folder
 
-## Run the API
+## Run the API locally
+
+You may want to run a local API server for development purposes, you can link the `Linksup frontend` locally to this local API server node. Beware that there is no staging yet ( deployment slots )  
+/!\ You are touching `production` storage
 
 1. Clone the repository:
 
@@ -53,6 +56,8 @@ You can use Postman to the import the API documentation from the `/docs` folder
 5. The API will be available at `http://localhost:3000`.
 
 ## Deploy the API ( Azure App )
+
+We use a containerized node ExpressJs API, we deploy it to a Container App in Azure
 
 1. **Build the Docker Image:**
 
