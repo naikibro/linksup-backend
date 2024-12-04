@@ -21,16 +21,23 @@ app.use(cors(corsOptions));
 app.use(bodyParser.json());
 
 // Azure Storage Configuration
-const storageAccountName = process.env.VITE_STORAGE_ACCOUNT_NAME!;
-const sasToken = process.env.VITE_AZURE_STORAGE_SAS_TOKEN!;
+const storageAccountName =
+  process.env.VITE_STORAGE_ACCOUNT_NAME || "linksupstorage";
+const sasToken =
+  process.env.VITE_AZURE_STORAGE_SAS_TOKEN ||
+  "sv=2022-11-02&ss=bfqt&srt=sco&sp=rwdlacupiytfx&se=2025-12-11T10:45:17Z&st=2024-12-02T02:45:17Z&spr=https,http&sig=lLbKMKqxbYG%2B0IxUJFYU3pV8GYAdSOU3BCEJ57nexRQ%3D";
 const blobServiceClient = new BlobServiceClient(
   `https://${storageAccountName}.blob.core.windows.net/?${sasToken}`
 );
 
 // Azure Cosmos DB Configuration
 const cosmosClient = new CosmosClient({
-  endpoint: process.env.VITE_COSMOS_DB_ENDPOINT!,
-  key: process.env.VITE_COSMOS_DB_KEY!,
+  endpoint:
+    process.env.VITE_COSMOS_DB_ENDPOINT ||
+    "https://linksupdb.documents.azure.com:443/",
+  key:
+    process.env.VITE_COSMOS_DB_KEY ||
+    "vWkWvvVNrzmTTXLPMBlIsz4e6iK0MNmBh1gpmQj5Lr1NkfeBMUtPgEFEWw2lPVtHwXlqFkNz9nd9ACDbxsD42w==",
 });
 const databaseId = "linksupdb-sql";
 const containerId = "uploads";
