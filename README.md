@@ -1,3 +1,5 @@
+![logo](./docs/images/1.png)
+
 # Linksup API
 
 This project is a Node.js-based RESTful API for uploading files to Azure Blob Storage and managing file records in Azure Cosmos DB. It also includes the ability to fetch files uploaded by a specific user.
@@ -49,3 +51,23 @@ You can use Postman to the import the API documentation from the `/docs` folder
    ```
 
 5. The API will be available at `http://localhost:3000`.
+
+## Deploy the API ( Azure App )
+
+1. **Build the Docker Image:**
+
+   ```bash
+   docker buildx build --platform linux/amd64 -t naikibro/linksup:1 .   # this ensures compatibility with Azure container runners, if you build locally on Mac M3 it will fetch arm based image and fail on Azure deployment
+   ```
+
+2. **Push the Image to Docker Hub:**
+
+   ```bash
+   docker push naikibro/linksup:1
+   ```
+
+CD is setup to listen to changes on `naikibro/linksup:1` and redeploy the API
+
+---
+
+Congratulations! You have successfully deployed the Linksup API to Azure App Service using Docker.
