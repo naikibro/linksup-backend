@@ -71,7 +71,8 @@ We use a containerized node ExpressJs API, we deploy it to a Container App in Az
    docker push naikibro/linksup:1
    ```
 
-CD is setup to listen to changes on `naikibro/linksup:1` and redeploy the API
+CD is setup to listen to changes on `naikibro/linksup:latest` and redeploy the API
+So you never really have to deploy manually to docker hub
 
 ---
 
