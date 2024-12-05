@@ -1,12 +1,11 @@
 import { CosmosClient } from "@azure/cosmos";
 import { BlobServiceClient } from "@azure/storage-blob";
 import bodyParser from "body-parser";
+import cors from "cors";
 import dotenv from "dotenv";
 import express, { Request, Response } from "express";
-import { FileRecord } from "./models/FileRecord";
-import { UserInfo } from "./models/UserInfo";
-import cors from "cors";
 import multer from "multer";
+import { FileRecord } from "./models/FileRecord";
 
 const upload = multer({ storage: multer.memoryStorage() });
 dotenv.config();
@@ -40,76 +39,69 @@ const cosmosClient = new CosmosClient({
   key:
     process.env.VITE_COSMOS_DB_KEY ||
     "vWkWvvVNrzmTTXLPMBlIsz4e6iK0MNmBh1gpmQj5Lr1NkfeBMUtPgEFEWw2lPVtHwXlqFkNz9nd9ACDbxsD42w==",
+  consistencyLevel: "Session",
 });
 const databaseId = "linksupdb-sql";
 const containerId = "uploads";
 
+// ------ F I L E S -----
+
 // Upload a file and create a record in Cosmos DB
-app.post(
-  "/files",
-  upload.single("file"),
-  async (
-    req: Request,
-    res: Response,
-    next: express.NextFunction
-  ): Promise<void> => {
-    try {
-      const file = req.file;
-      const userInfo: UserInfo = JSON.parse(req.body.userInfo);
+app.post("/files", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { fileName, fileType, fileBuffer, userInfo } = req.body;
 
-      if (!file || !userInfo) {
-        res.status(400).json({ message: "File or user information missing" });
-        return;
-      }
-
-      const {
-        originalname: fileName,
-        mimetype: fileType,
-        buffer: fileBuffer,
-      } = file;
-
-      const containerName = "files";
-      const containerClient =
-        blobServiceClient.getContainerClient(containerName);
-
-      await containerClient.createIfNotExists();
-
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const uploadedFileName = `${timestamp}_${fileName}`;
-      const blobClient = containerClient.getBlockBlobClient(uploadedFileName);
-      await blobClient.upload(fileBuffer, fileBuffer.length, {
-        blobHTTPHeaders: { blobContentType: fileType },
-      });
-
-      const blobUrl = blobClient.url;
-
-      const { database } = await cosmosClient.databases.createIfNotExists({
-        id: databaseId,
-      });
-      const { container } = await database.containers.createIfNotExists({
-        id: containerId,
-      });
-
-      const record: FileRecord = {
-        id: uploadedFileName,
-        fileName,
-        url: blobUrl,
-        uploadedAt: new Date().toISOString(),
-        size: fileBuffer.length,
-        type: fileType,
-        author: userInfo.userDetails,
-        authorId: userInfo.userId,
-      };
-
-      await container.items.create(record);
-
-      res.status(201).json(record);
-    } catch (error) {
-      console.error("Error uploading file or writing record:", error);
-      next(error);
+    if (!fileName || !fileType || !fileBuffer || !userInfo) {
+      res.status(400).json({ message: "Missing required fields" });
+      return;
     }
+
+    // Decode the base64-encoded file content
+    const fileContent = Buffer.from(fileBuffer, "base64");
+
+    const containerName = "files";
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+
+    await containerClient.createIfNotExists();
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const uploadedFileName = `${timestamp}_${fileName}`;
+    const blobClient = containerClient.getBlockBlobClient(uploadedFileName);
+    await blobClient.upload(fileContent, fileContent.length, {
+      blobHTTPHeaders: { blobContentType: fileType },
+    });
+
+    const blobUrl = blobClient.url;
+
+    const { database } = await cosmosClient.databases.createIfNotExists({
+      id: databaseId,
+    });
+    const { container } = await database.containers.createIfNotExists({
+      id: containerId,
+    });
+
+    const record: FileRecord = {
+      id: uploadedFileName,
+      fileName,
+      url: blobUrl,
+      uploadedAt: new Date().toISOString(),
+      size: fileContent.length,
+      type: fileType,
+      author: userInfo.userDetails,
+      authorId: userInfo.userId,
+      isPublished: false,
+    };
+
+    await container.items.create(record);
+
+    res.status(201).json(record);
+  } catch (error) {
+    console.error("Error uploading file or writing record:", error);
+    res
+      .status(500)
+      .json({ message: "Error uploading file or writing record", error });
   }
-);
+});
 
 // Fetch all files for a specific user
 app.get("/files/:userId", async (req: Request, res: Response) => {
@@ -138,12 +130,112 @@ app.get("/files/:userId", async (req: Request, res: Response) => {
   }
 });
 
-// Health Check
+// Fetch all publicly published files
+app.get("/files", async (req: Request, res: Response) => {
+  try {
+    const { database } = await cosmosClient.databases.createIfNotExists({
+      id: databaseId,
+    });
+    const { container } = await database.containers.createIfNotExists({
+      id: containerId,
+    });
+
+    const querySpec = {
+      query: "SELECT * FROM c WHERE c.isPublished = true",
+    };
+
+    const { resources } = await container.items
+      .query<FileRecord>(querySpec)
+      .fetchAll();
+
+    console.log("Published files:", resources);
+    res.json(resources);
+  } catch (error) {
+    console.error("Error fetching published files:", error);
+    res.status(500).json({ message: "Error fetching files", error });
+  }
+});
+
+// set the isPublished state of a File
+app.put(
+  "/files/:fileId",
+  async (req: Request, res: Response): Promise<void> => {
+    const { fileId } = req.params;
+    const { isPublished } = req.body;
+
+    try {
+      const { database } = await cosmosClient.databases.createIfNotExists({
+        id: databaseId,
+      });
+      const { container } = await database.containers.createIfNotExists({
+        id: containerId,
+      });
+
+      const { resource } = await container.item(fileId).read<FileRecord>();
+
+      if (!resource) {
+        res.status(404).json({ message: "File not found" });
+        return;
+      }
+
+      const updatedRessource: FileRecord = {
+        ...resource,
+        isPublished: isPublished,
+      };
+
+      const replaceResponse = await container
+        .item(fileId)
+        .replace(updatedRessource);
+      console.log("Replace response:", replaceResponse);
+      res.json(updatedRessource);
+    } catch (error) {
+      console.error("Error updating file:", error);
+      res.status(500).json({ message: "Error updating file", error });
+    }
+  }
+);
+
+app.delete("/files/:fileId", async (req: Request, res: Response) => {
+  const { fileId } = req.params;
+
+  try {
+    const containerName = "files";
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+
+    const blobClient = containerClient.getBlockBlobClient(fileId);
+    await blobClient.deleteIfExists();
+
+    const { database } = await cosmosClient.databases.createIfNotExists({
+      id: databaseId,
+    });
+    const { container } = await database.containers.createIfNotExists({
+      id: containerId,
+    });
+
+    await container.item(fileId).delete();
+    res.status(204).send();
+  } catch (error) {
+    console.error("Error deleting file:", error);
+    res.status(500).json({ message: "Error deleting file", error });
+  }
+});
+
+// ------ H E A L T H C H E C K -----
 app.get("/", (req: Request, res: Response) => {
   res.send("API is running!");
 });
 
-// Start the server
+app.get("/health", (req: Request, res: Response) => {
+  res.json({
+    message: "API is running!",
+    env: process.env.VITTE_ENV || "local",
+    project: "https://github.com/naikibro/links-up-supinfo",
+    apiDocumentation:
+      "https://god.gw.postman.com/run-collection/36502015-b1b988ba-735b-4981-b63b-590d1aafcebe?action=collection%2Ffork&source=rip_markdown&collection-url=entityId%3D36502015-b1b988ba-735b-4981-b63b-590d1aafcebe%26entityType%3Dcollection%26workspaceId%3Dfe9c7a1e-0780-4df4-84aa-435ab3fc6f00",
+  });
+});
+
+// ----- S T A R T - S E R V E R -----
 app.listen(port, () => {
   console.log(`API is listening on port ${port}`);
 });

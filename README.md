@@ -17,7 +17,8 @@ This project is a Node.js-based RESTful API for uploading files to Azure Blob St
 - Azure Cosmos DB account
 - Environment variables for configuration
 
-You can use Postman to the import the API documentation from the `/docs` folder
+You can use Postman to the preview the API specifications
+[<img src="https://run.pstmn.io/button.svg" alt="Run In Postman" style="width: 128px; height: 32px;">](https://god.gw.postman.com/run-collection/36502015-b1b988ba-735b-4981-b63b-590d1aafcebe?action=collection%2Ffork&source=rip_markdown&collection-url=entityId%3D36502015-b1b988ba-735b-4981-b63b-590d1aafcebe%26entityType%3Dcollection%26workspaceId%3Dfe9c7a1e-0780-4df4-84aa-435ab3fc6f00)
 
 ## Run the API locally
 

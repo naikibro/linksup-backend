@@ -7,4 +7,5 @@ export interface FileRecord {
   type: string;
   author: string;
   authorId: string;
+  isPublished?: boolean;
 }
