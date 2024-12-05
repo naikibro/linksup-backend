@@ -19,7 +19,8 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: "1000mb" }));
+app.use(bodyParser.urlencoded({ limit: "1000mb", extended: true }));
 
 // Azure Storage Configuration
 const storageAccountName =
@@ -49,9 +50,15 @@ const containerId = "uploads";
 // Upload a file and create a record in Cosmos DB
 app.post("/files", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { fileName, fileType, fileBuffer, userInfo } = req.body;
+    const { fileName, fileType, fileBuffer, userInfo, isPublished } = req.body;
 
-    if (!fileName || !fileType || !fileBuffer || !userInfo) {
+    if (
+      !fileName ||
+      !fileType ||
+      !fileBuffer ||
+      !userInfo ||
+      isPublished === undefined
+    ) {
       res.status(400).json({ message: "Missing required fields" });
       return;
     }
@@ -89,7 +96,7 @@ app.post("/files", async (req: Request, res: Response): Promise<void> => {
       type: fileType,
       author: userInfo.userDetails,
       authorId: userInfo.userId,
-      isPublished: false,
+      isPublished: isPublished,
     };
 
     await container.items.create(record);
@@ -148,7 +155,6 @@ app.get("/files", async (req: Request, res: Response) => {
       .query<FileRecord>(querySpec)
       .fetchAll();
 
-    console.log("Published files:", resources);
     res.json(resources);
   } catch (error) {
     console.error("Error fetching published files:", error);
@@ -186,7 +192,7 @@ app.put(
       const replaceResponse = await container
         .item(fileId)
         .replace(updatedRessource);
-      console.log("Replace response:", replaceResponse);
+
       res.json(updatedRessource);
     } catch (error) {
       console.error("Error updating file:", error);
@@ -232,6 +238,8 @@ app.get("/health", (req: Request, res: Response) => {
     project: "https://github.com/naikibro/links-up-supinfo",
     apiDocumentation:
       "https://god.gw.postman.com/run-collection/36502015-b1b988ba-735b-4981-b63b-590d1aafcebe?action=collection%2Ffork&source=rip_markdown&collection-url=entityId%3D36502015-b1b988ba-735b-4981-b63b-590d1aafcebe%26entityType%3Dcollection%26workspaceId%3Dfe9c7a1e-0780-4df4-84aa-435ab3fc6f00",
+    latestImage:
+      "https://hub.docker.com/repository/docker/naikibro/linksup/general",
   });
 });
 
